@@ -1,0 +1,35 @@
+{
+  "name": "spotify-ranker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "jest",
+    "migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "html-to-image": "^1.11.13",
+    "next": "16.2.6",
+    "next-auth": "^4.24.14",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/spotify-web-playback-sdk": "^0.1.19",
+    "dotenv": "^17.4.2",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "tailwindcss": "^4",
+    "ts-jest": "^29.4.11",
+    "tsx": "^4.22.3",
+    "typescript": "^5"
+  }
+}
