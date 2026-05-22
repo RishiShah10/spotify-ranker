@@ -17,3 +17,12 @@ export function formatTierText(
 
   return `🎵 ${session.name} — ${subtitle}\n\n${tierLines}`;
 }
+
+export async function exportTierListImage(element: HTMLElement): Promise<void> {
+  const { toPng } = await import('html-to-image');
+  const dataUrl = await toPng(element, { cacheBust: true });
+  const link = document.createElement('a');
+  link.download = 'tier-list.png';
+  link.href = dataUrl;
+  link.click();
+}
