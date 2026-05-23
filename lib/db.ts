@@ -74,6 +74,20 @@ export async function setSessionHidden(sessionId: string, userId: string, hidden
   return result.length > 0;
 }
 
+export async function getFullyRankedSessionsForUser(userId: string): Promise<RankingSession[]> {
+  const rows = await sql`
+    SELECT rs.* FROM ranking_sessions rs
+    WHERE rs.user_id = ${userId}
+      AND rs.completed = true
+      AND NOT EXISTS (
+        SELECT 1 FROM song_rankings sr
+        WHERE sr.session_id = rs.id AND sr.tier = 'skip'
+      )
+    ORDER BY rs.updated_at DESC
+  `;
+  return rows as RankingSession[];
+}
+
 export async function restoreAllHiddenForUser(userId: string): Promise<void> {
   await sql`
     UPDATE ranking_sessions SET hidden = false, updated_at = NOW()

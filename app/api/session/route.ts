@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createSession, getSession, getActiveSessionsForUser, getCompletedSessionsForUser, getHiddenSessionsForUser, setSessionHidden, restoreAllHiddenForUser, deleteSession } from '@/lib/db';
+import { createSession, getSession, getActiveSessionsForUser, getCompletedSessionsForUser, getHiddenSessionsForUser, getFullyRankedSessionsForUser, setSessionHidden, restoreAllHiddenForUser, deleteSession } from '@/lib/db';
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const MAX_ACTIVE_SESSIONS = 20;
@@ -124,9 +124,12 @@ export async function GET(req: NextRequest) {
 
   const completed = searchParams.get('completed') === 'true';
   const hidden = searchParams.get('hidden') === 'true';
+  const fullyRanked = searchParams.get('fullyRanked') === 'true';
   try {
     let sessions;
-    if (hidden) {
+    if (fullyRanked) {
+      sessions = await getFullyRankedSessionsForUser(session.spotifyId);
+    } else if (hidden) {
       sessions = await getHiddenSessionsForUser(session.spotifyId);
     } else if (completed) {
       sessions = await getCompletedSessionsForUser(session.spotifyId);
