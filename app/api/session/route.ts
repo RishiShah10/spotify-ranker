@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createSession, getSession, getActiveSessionsForUser, deleteSession } from '@/lib/db';
+import { createSession, getSession, getActiveSessionsForUser, getCompletedSessionsForUser, deleteSession } from '@/lib/db';
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const MAX_ACTIVE_SESSIONS = 20;
@@ -118,12 +118,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(publicSession);
   }
 
-  // Listing active sessions requires auth
+  // Listing sessions requires auth
   const session = await getServerSession(authOptions);
   if (!session?.spotifyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const completed = searchParams.get('completed') === 'true';
   try {
-    const sessions = await getActiveSessionsForUser(session.spotifyId);
+    const sessions = completed
+      ? await getCompletedSessionsForUser(session.spotifyId)
+      : await getActiveSessionsForUser(session.spotifyId);
     return NextResponse.json(sessions);
   } catch (err) {
     console.error('Failed to fetch sessions:', err);

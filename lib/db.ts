@@ -47,6 +47,15 @@ export async function getActiveSessionsForUser(userId: string): Promise<RankingS
   return rows as RankingSession[];
 }
 
+export async function getCompletedSessionsForUser(userId: string): Promise<RankingSession[]> {
+  const rows = await sql`
+    SELECT * FROM ranking_sessions
+    WHERE user_id = ${userId} AND completed = true
+    ORDER BY updated_at DESC
+  `;
+  return rows as RankingSession[];
+}
+
 export async function updateSessionProgress(
   sessionId: string,
   currentIndex: number,
