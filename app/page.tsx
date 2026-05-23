@@ -205,7 +205,7 @@ export default function HomePage() {
 
         {!session ? (
           /* Logged-out hero */
-          <div className="mt-10 space-y-10">
+          <div className="mt-10 space-y-8">
             <div className="space-y-4">
               <h2 className="text-4xl font-black tracking-tight text-white leading-tight">
                 Rank while<br />
@@ -214,33 +214,25 @@ export default function HomePage() {
               <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 Keep this open as a tab at work. Put on a new album, find it here, and rank each song as it plays — no pausing, no notes app, no trying to remember what track three was called by the time it&rsquo;s over.
               </p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-faint)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
                 Song ends, you rate it, next one starts. That&rsquo;s the whole thing.
               </p>
             </div>
 
-            <div
-              className="rounded-2xl p-5 space-y-3"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-              }}
-            >
+            <div className="flex items-center gap-2">
               {[
-                { tier: 'S', color: '#FF7070', label: 'Absolute classics' },
-                { tier: 'A', color: '#FFA566', label: 'Really strong cuts' },
-                { tier: 'B', color: '#FFD966', label: 'Solid tracks' },
-                { tier: 'C', color: '#FFFE66', label: 'Decent listens' },
-                { tier: 'F', color: '#6BFF6B', label: 'Not for me' },
-              ].map(({ tier, color, label }) => (
-                <div key={tier} className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-black flex-shrink-0"
-                    style={{ backgroundColor: color }}
-                  >
-                    {tier}
-                  </div>
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                { tier: 'S', color: '#FF7070' },
+                { tier: 'A', color: '#FFA566' },
+                { tier: 'B', color: '#FFD966' },
+                { tier: 'C', color: '#FFFE66' },
+                { tier: 'F', color: '#6BFF6B' },
+              ].map(({ tier, color }) => (
+                <div
+                  key={tier}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-black"
+                  style={{ backgroundColor: color }}
+                >
+                  {tier}
                 </div>
               ))}
             </div>
