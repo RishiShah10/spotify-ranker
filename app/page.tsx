@@ -208,11 +208,14 @@ export default function HomePage() {
           <div className="mt-10 space-y-10">
             <div className="space-y-4">
               <h2 className="text-4xl font-black tracking-tight text-white leading-tight">
-                Rank every<br />
-                <span style={{ color: 'var(--spotify-green)' }}>track.</span>
+                Rank while<br />
+                <span style={{ color: 'var(--spotify-green)' }}>you listen.</span>
               </h2>
               <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Listen to albums and playlists, then place every song in its tier — S through F.
+                Keep this open as a tab at work. Put on a new album, find it here, and rank each song as it plays — no pausing, no notes app, no trying to remember what track three was called by the time it&rsquo;s over.
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-faint)' }}>
+                Song ends, you rate it, next one starts. That&rsquo;s the whole thing.
               </p>
             </div>
 
