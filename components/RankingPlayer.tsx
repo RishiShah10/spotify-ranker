@@ -28,6 +28,7 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
   const [saving, setSaving] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [loop, setLoop] = useState(false);
+  const [seekHovered, setSeekHovered] = useState(false);
   const exitCalledRef = useRef(false);
 
   const currentTrack = tracks[trackIndex];
@@ -260,11 +261,13 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
         {/* Progress bar */}
         {playerState.isReady && (
           <div className="w-full space-y-1.5 px-1">
-            {/* Tall hit-area wrapper, track sits in the middle */}
+            {/* Hit-area wrapper — 44px tall for comfortable thumb target */}
             <div
               className="relative w-full flex items-center cursor-pointer"
-              style={{ height: 20 }}
+              style={{ height: 44 }}
               onClick={handleSeek}
+              onMouseEnter={() => setSeekHovered(true)}
+              onMouseLeave={() => setSeekHovered(false)}
               role="slider"
               aria-label="Seek"
               tabIndex={0}
@@ -277,8 +280,15 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
                 else if (e.key === 'ArrowLeft') seek(Math.max(playerState.position - 5000, 0));
               }}
             >
-              {/* Track */}
-              <div className="absolute inset-x-0 rounded-full overflow-hidden" style={{ height: 5, backgroundColor: 'var(--surface-3)' }}>
+              {/* Track — full-width background always visible, filled portion on top */}
+              <div
+                className="absolute inset-x-0 rounded-full overflow-hidden pointer-events-none"
+                style={{
+                  height: seekHovered ? 6 : 4,
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  transition: 'height 0.15s ease',
+                }}
+              >
                 <div
                   className="h-full rounded-full"
                   style={{
@@ -288,14 +298,20 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
                   }}
                 />
               </div>
-              {/* Dot at current position */}
+              {/* Thumb — always visible, scales and glows on hover */}
               <div
-                className="absolute w-3.5 h-3.5 rounded-full shadow-md pointer-events-none"
+                className="absolute rounded-full pointer-events-none"
                 style={{
-                  left: `clamp(0px, calc(${progressPct}% - 7px), calc(100% - 14px))`,
+                  width: seekHovered ? 18 : 16,
+                  height: seekHovered ? 18 : 16,
+                  left: seekHovered
+                    ? `clamp(0px, calc(${progressPct}% - 9px), calc(100% - 18px))`
+                    : `clamp(0px, calc(${progressPct}% - 8px), calc(100% - 16px))`,
                   backgroundColor: 'white',
-                  boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
-                  transition: 'left 0.5s linear',
+                  boxShadow: seekHovered
+                    ? '0 0 0 3px rgba(29,185,84,0.35), 0 2px 8px rgba(0,0,0,0.6)'
+                    : '0 2px 6px rgba(0,0,0,0.55)',
+                  transition: 'left 0.5s linear, width 0.15s ease, height 0.15s ease, box-shadow 0.15s ease',
                 }}
               />
             </div>
