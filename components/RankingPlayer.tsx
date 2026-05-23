@@ -416,15 +416,28 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
         {/* Tier picker */}
         {showPicker && (
           <div
-            className="w-full rounded-2xl p-5 space-y-4 text-center"
+            className="w-full rounded-2xl p-5 space-y-4"
             style={{
               backgroundColor: 'var(--surface)',
               border: '1px solid var(--border)',
             }}
           >
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-              Rate this track
-            </p>
+            <div className="flex items-center">
+              <button
+                onClick={async () => { setShowPicker(false); await togglePlay(); }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:bg-white/10 active:bg-white/15"
+                aria-label="Back to listening"
+                style={{ color: 'var(--text-faint)' }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+              </button>
+              <p className="flex-1 text-xs font-semibold uppercase tracking-widest text-center" style={{ color: 'var(--text-faint)' }}>
+                Rate this track
+              </p>
+              <div className="w-7" />
+            </div>
             <TierPicker onPick={handlePick} disabled={saving} />
           </div>
         )}
