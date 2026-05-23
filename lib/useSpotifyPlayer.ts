@@ -53,7 +53,7 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
     function initPlayer() {
       const player = new window.Spotify.Player({
         name: 'Spotify Ranker',
-        getOAuthToken: (cb) => cb(accessToken),
+        getOAuthToken: (cb) => cb(accessToken!),
         volume: 0.8,
       });
 
@@ -164,6 +164,11 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
     trackEndedRef.current = false;
     hasBeenPlayingRef.current = false;
     setPlayerState((s) => ({ ...s, position: 0 }));
+    // Disable repeat so the track stops naturally instead of looping
+    await fetch(
+      `https://api.spotify.com/v1/me/player/repeat?state=off&device_id=${deviceIdRef.current}`,
+      { method: 'PUT', headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(() => {});
     await fetch(
       `https://api.spotify.com/v1/me/player/play?device_id=${deviceIdRef.current}`,
       {
