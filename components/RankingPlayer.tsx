@@ -27,21 +27,23 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const [autoplay, setAutoplay] = useState(false);
+  const [loop, setLoop] = useState(false);
   const exitCalledRef = useRef(false);
 
   const currentTrack = tracks[trackIndex];
 
   const { playerState, playTrack, pause, togglePlay, activateElement, seek } = useSpotifyPlayer(accessToken, () => {
-    if (autoplay) {
-      handleSkip();
+    if (loop) {
+      // Replay the same song without pausing or showing the picker
+      if (currentTrack) playTrack(currentTrack.uri);
     } else {
       setShowPicker(true);
     }
   });
 
+  // After every rating, auto-start the next track
   useEffect(() => {
-    if (autoplay && audioUnlocked && playerState.isReady && currentTrack) {
+    if (audioUnlocked && playerState.isReady && currentTrack) {
       playTrack(currentTrack.uri);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -362,21 +364,21 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
               </svg>
             </button>
 
-            {/* Autoplay toggle */}
+            {/* Loop toggle */}
             <button
-              onClick={() => setAutoplay((v) => !v)}
+              onClick={() => setLoop((v) => !v)}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
               style={{
-                color: autoplay ? 'var(--spotify-green)' : 'var(--text-faint)',
-                border: `1px solid ${autoplay ? 'var(--spotify-green)' : 'var(--border)'}`,
-                backgroundColor: autoplay ? 'rgba(29,185,84,0.08)' : 'transparent',
+                color: loop ? 'var(--spotify-green)' : 'var(--text-faint)',
+                border: `1px solid ${loop ? 'var(--spotify-green)' : 'var(--border)'}`,
+                backgroundColor: loop ? 'rgba(29,185,84,0.08)' : 'transparent',
               }}
-              aria-pressed={autoplay}
+              aria-pressed={loop}
             >
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
               </svg>
-              Autoplay
+              Loop
             </button>
           </div>
         )}
