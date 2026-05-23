@@ -50,10 +50,35 @@ export async function getActiveSessionsForUser(userId: string): Promise<RankingS
 export async function getCompletedSessionsForUser(userId: string): Promise<RankingSession[]> {
   const rows = await sql`
     SELECT * FROM ranking_sessions
-    WHERE user_id = ${userId} AND completed = true
+    WHERE user_id = ${userId} AND completed = true AND hidden = false
     ORDER BY updated_at DESC
   `;
   return rows as RankingSession[];
+}
+
+export async function getHiddenSessionsForUser(userId: string): Promise<RankingSession[]> {
+  const rows = await sql`
+    SELECT * FROM ranking_sessions
+    WHERE user_id = ${userId} AND completed = true AND hidden = true
+    ORDER BY updated_at DESC
+  `;
+  return rows as RankingSession[];
+}
+
+export async function setSessionHidden(sessionId: string, userId: string, hidden: boolean): Promise<boolean> {
+  const result = await sql`
+    UPDATE ranking_sessions SET hidden = ${hidden}, updated_at = NOW()
+    WHERE id = ${sessionId} AND user_id = ${userId}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+export async function restoreAllHiddenForUser(userId: string): Promise<void> {
+  await sql`
+    UPDATE ranking_sessions SET hidden = false, updated_at = NOW()
+    WHERE user_id = ${userId} AND hidden = true
+  `;
 }
 
 export async function updateSessionProgress(

@@ -259,10 +259,11 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
 
         {/* Progress bar */}
         {playerState.isReady && (
-          <div className="w-full space-y-2 px-1">
+          <div className="w-full space-y-1.5 px-1">
+            {/* Tall hit-area wrapper, track sits in the middle */}
             <div
-              className="w-full rounded-full overflow-hidden cursor-pointer"
-              style={{ height: 4, backgroundColor: 'var(--surface-3)' }}
+              className="relative w-full flex items-center cursor-pointer"
+              style={{ height: 20 }}
               onClick={handleSeek}
               role="slider"
               aria-label="Seek"
@@ -276,12 +277,25 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
                 else if (e.key === 'ArrowLeft') seek(Math.max(playerState.position - 5000, 0));
               }}
             >
+              {/* Track */}
+              <div className="absolute inset-x-0 rounded-full overflow-hidden" style={{ height: 5, backgroundColor: 'var(--surface-3)' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progressPct}%`,
+                    backgroundColor: 'var(--spotify-green)',
+                    transition: 'width 0.5s linear',
+                  }}
+                />
+              </div>
+              {/* Dot at current position */}
               <div
-                className="h-full rounded-full pointer-events-none"
+                className="absolute w-3.5 h-3.5 rounded-full shadow-md pointer-events-none"
                 style={{
-                  width: `${progressPct}%`,
-                  backgroundColor: 'var(--spotify-green)',
-                  transition: 'width 0.5s linear',
+                  left: `clamp(0px, calc(${progressPct}% - 7px), calc(100% - 14px))`,
+                  backgroundColor: 'white',
+                  boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
+                  transition: 'left 0.5s linear',
                 }}
               />
             </div>

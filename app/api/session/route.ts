@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createSession, getSession, getActiveSessionsForUser, getCompletedSessionsForUser, deleteSession } from '@/lib/db';
+import { createSession, getSession, getActiveSessionsForUser, getCompletedSessionsForUser, getHiddenSessionsForUser, setSessionHidden, restoreAllHiddenForUser, deleteSession } from '@/lib/db';
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const MAX_ACTIVE_SESSIONS = 20;
@@ -123,13 +123,54 @@ export async function GET(req: NextRequest) {
   if (!session?.spotifyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const completed = searchParams.get('completed') === 'true';
+  const hidden = searchParams.get('hidden') === 'true';
   try {
-    const sessions = completed
-      ? await getCompletedSessionsForUser(session.spotifyId)
-      : await getActiveSessionsForUser(session.spotifyId);
+    let sessions;
+    if (hidden) {
+      sessions = await getHiddenSessionsForUser(session.spotifyId);
+    } else if (completed) {
+      sessions = await getCompletedSessionsForUser(session.spotifyId);
+    } else {
+      sessions = await getActiveSessionsForUser(session.spotifyId);
+    }
     return NextResponse.json(sessions);
   } catch (err) {
     console.error('Failed to fetch sessions:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.spotifyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+
+  // Restore all hidden sessions for user
+  if (body.restoreAll === true) {
+    try {
+      await restoreAllHiddenForUser(session.spotifyId);
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error('Failed to restore sessions:', err);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  }
+
+  // Soft-delete / restore a single session
+  const { id, hidden } = body;
+  if (!id || typeof hidden !== 'boolean') {
+    return NextResponse.json({ error: 'Missing id or hidden' }, { status: 400 });
+  }
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+  }
+  try {
+    const updated = await setSessionHidden(id, session.spotifyId, hidden);
+    if (!updated) return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to update session:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

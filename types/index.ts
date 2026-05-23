@@ -18,6 +18,7 @@ export interface RankingSession {
   total_tracks: number;
   current_index: number;
   completed: boolean;
+  hidden: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -10,6 +10,87 @@ import { ArtistView } from '@/components/ArtistView';
 import { getAlbumInfo, getPlaylistInfo } from '@/lib/spotify';
 import type { SpotifyArtist, SpotifySearchResult, SpotifySearchResponse, RankingSession } from '@/types';
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const diffDays = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function HistoryCard({ session: s, onClick, onDelete }: { session: RankingSession; onClick: () => void; onDelete: () => void }) {
+  return (
+    <div
+      className="group relative flex items-center gap-3 rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+      style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+    >
+      {/* Blurred cover background */}
+      {s.cover_url && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `url(${s.cover_url})`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
+            filter: 'blur(40px) saturate(180%)',
+            opacity: 0.07, pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      <button onClick={onClick} className="relative flex items-center gap-3 flex-1 min-w-0 px-3 py-3 text-left">
+        {/* Cover art */}
+        {s.cover_url ? (
+          <img src={s.cover_url} alt={s.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 shadow-lg" />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg" style={{ backgroundColor: 'var(--surface-2)' }}>
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+          </div>
+        )}
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white truncate leading-tight">{s.name}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span
+              className="text-xs font-semibold px-1.5 py-0.5 rounded-md"
+              style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-faint)' }}
+            >
+              {s.spotify_type === 'album' ? 'Album' : 'Playlist'}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--text-faint)' }}>·</span>
+            <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{s.total_tracks} tracks</span>
+            <span className="text-xs" style={{ color: 'var(--text-faint)' }}>·</span>
+            <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{formatDate(s.updated_at)}</span>
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <svg className="w-4 h-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--spotify-green)' }}>
+          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" />
+        </svg>
+      </button>
+
+      {/* Delete button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className="relative flex-shrink-0 w-8 h-8 mr-2 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 hover:bg-red-500/15 active:bg-red-500/25"
+        aria-label="Remove from history"
+        style={{ color: '#ff6b6b' }}
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -18,8 +99,20 @@ export default function HomePage() {
   const [selectedArtist, setSelectedArtist] = useState<SpotifyArtist | null>(null);
   const [activeSessions, setActiveSessions] = useState<RankingSession[]>([]);
   const [completedSessions, setCompletedSessions] = useState<RankingSession[]>([]);
+  const [hiddenSessions, setHiddenSessions] = useState<RankingSession[]>([]);
   const [historySearch, setHistorySearch] = useState('');
   const [working, setWorking] = useState(false);
+
+  function loadHistory() {
+    fetch('/api/session?completed=true')
+      .then((r) => r.ok ? r.json() : [])
+      .then(setCompletedSessions)
+      .catch(() => {});
+    fetch('/api/session?hidden=true')
+      .then((r) => r.ok ? r.json() : [])
+      .then(setHiddenSessions)
+      .catch(() => {});
+  }
 
   useEffect(() => {
     if (!session?.spotifyId) return;
@@ -27,10 +120,7 @@ export default function HomePage() {
       .then((r) => r.ok ? r.json() : [])
       .then(setActiveSessions)
       .catch(() => {});
-    fetch('/api/session?completed=true')
-      .then((r) => r.ok ? r.json() : [])
-      .then(setCompletedSessions)
-      .catch(() => {});
+    loadHistory();
   }, [session?.spotifyId]);
 
   async function createAndNavigate(
@@ -192,81 +282,95 @@ export default function HomePage() {
             )}
 
             {/* History */}
-            {completedSessions.length > 0 && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-                    History
-                  </h2>
-                  <span className="text-xs tabular-nums" style={{ color: 'var(--text-faint)' }}>
-                    {completedSessions.length} ranked
+            {(completedSessions.length > 0 || hiddenSessions.length > 0) && (
+              <div className="space-y-3 pt-4">
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                    Your Rankings
                   </span>
+                  <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
                 </div>
 
-                {/* Search */}
-                <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
-                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search history…"
-                    value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
-                    style={{
-                      backgroundColor: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                </div>
-
-                {/* Results list */}
-                {(() => {
-                  const q = historySearch.trim().toLowerCase();
-                  const filtered = q
-                    ? completedSessions.filter((s) => s.name.toLowerCase().includes(q))
-                    : completedSessions;
-                  if (filtered.length === 0) {
-                    return (
-                      <p className="text-sm text-center py-4" style={{ color: 'var(--text-faint)' }}>
-                        No results for &ldquo;{historySearch}&rdquo;
-                      </p>
-                    );
-                  }
-                  return (
-                    <div className="space-y-2">
-                      {filtered.map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => router.push(`/results/${s.id}`)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:bg-white/5 active:bg-white/8"
-                          style={{ border: '1px solid var(--border)' }}
-                        >
-                          {s.cover_url ? (
-                            <img src={s.cover_url} alt={s.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: 'var(--surface-2)' }}>
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
-                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                              </svg>
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{s.name}</p>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                              {s.spotify_type === 'album' ? 'Album' : 'Playlist'} · {s.total_tracks} tracks
-                            </p>
-                          </div>
-                          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
-                            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" />
-                          </svg>
-                        </button>
-                      ))}
+                {completedSessions.length > 0 && (
+                  <>
+                    {/* Search */}
+                    <div className="relative">
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
+                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder={`Search ${completedSessions.length} ranking${completedSessions.length !== 1 ? 's' : ''}…`}
+                        value={historySearch}
+                        onChange={(e) => setHistorySearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
+                        style={{
+                          backgroundColor: 'var(--surface)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
                     </div>
-                  );
-                })()}
+
+                    {/* Cards */}
+                    {(() => {
+                      const q = historySearch.trim().toLowerCase();
+                      const filtered = q
+                        ? completedSessions.filter((s) => s.name.toLowerCase().includes(q))
+                        : completedSessions;
+                      if (filtered.length === 0) {
+                        return (
+                          <p className="text-sm text-center py-6" style={{ color: 'var(--text-faint)' }}>
+                            No results for &ldquo;{historySearch}&rdquo;
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="space-y-2">
+                          {filtered.map((s) => (
+                            <HistoryCard
+                              key={s.id}
+                              session={s}
+                              onClick={() => router.push(`/results/${s.id}`)}
+                              onDelete={async () => {
+                                await fetch('/api/session', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ id: s.id, hidden: true }),
+                                });
+                                setCompletedSessions((prev) => prev.filter((x) => x.id !== s.id));
+                                setHiddenSessions((prev) => [...prev, s]);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* Restore hidden */}
+                {hiddenSessions.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/session', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ restoreAll: true }),
+                      });
+                      loadHistory();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 hover:bg-white/5"
+                    style={{ color: 'var(--text-faint)', border: '1px dashed var(--border)' }}
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7v3l4-4-4-4v3z" />
+                    </svg>
+                    Restore {hiddenSessions.length} hidden ranking{hiddenSessions.length !== 1 ? 's' : ''}
+                  </button>
+                )}
               </div>
             )}
           </div>
