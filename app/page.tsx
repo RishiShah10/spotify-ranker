@@ -388,33 +388,14 @@ export default function HomePage() {
                               isHidden={s.hidden}
                               onClick={() => router.push(`/results/${s.id}`)}
                               onDelete={async () => {
-                                if (s.hidden) {
-                                  await fetch('/api/session', {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ id: s.id, hidden: false }),
-                                  });
-                                  setHiddenSessions((prev) => prev.filter((x) => x.id !== s.id));
-                                  setCompletedSessions((prev) =>
-                                    [...prev, { ...s, hidden: false }].sort(
-                                      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-                                    )
-                                  );
-                                  setFullyRankedSessions((prev) =>
-                                    prev.map((x) => x.id === s.id ? { ...x, hidden: false } : x)
-                                  );
-                                } else {
-                                  await fetch('/api/session', {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ id: s.id, hidden: true }),
-                                  });
-                                  setCompletedSessions((prev) => prev.filter((x) => x.id !== s.id));
-                                  setHiddenSessions((prev) => [...prev, { ...s, hidden: true }]);
-                                  setFullyRankedSessions((prev) =>
-                                    prev.map((x) => x.id === s.id ? { ...x, hidden: true } : x)
-                                  );
-                                }
+                                await fetch('/api/session', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ id: s.id, hidden: true }),
+                                });
+                                setCompletedSessions((prev) => prev.filter((x) => x.id !== s.id));
+                                setFullyRankedSessions((prev) => prev.filter((x) => x.id !== s.id));
+                                setHiddenSessions((prev) => [...prev, { ...s, hidden: true }]);
                               }}
                             />
                           ))}

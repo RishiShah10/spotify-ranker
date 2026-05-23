@@ -79,6 +79,7 @@ export async function getFullyRankedSessionsForUser(userId: string): Promise<Ran
     SELECT rs.* FROM ranking_sessions rs
     WHERE rs.user_id = ${userId}
       AND rs.completed = true
+      AND rs.hidden = false
       AND NOT EXISTS (
         SELECT 1 FROM song_rankings sr
         WHERE sr.session_id = rs.id AND sr.tier = 'skip'
