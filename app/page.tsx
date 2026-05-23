@@ -21,11 +21,11 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function HistoryCard({ session: s, onClick, onDelete }: { session: RankingSession; onClick: () => void; onDelete: () => void }) {
+function HistoryCard({ session: s, onClick, onDelete, isHidden }: { session: RankingSession; onClick: () => void; onDelete: () => void; isHidden?: boolean }) {
   return (
     <div
       className="group relative flex items-center gap-3 rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-      style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+      style={{ backgroundColor: 'var(--surface)', border: `1px solid ${isHidden ? 'rgba(255,107,107,0.2)' : 'var(--border)'}`, opacity: isHidden ? 0.65 : 1 }}
     >
       {/* Blurred cover background */}
       {s.cover_url && (
@@ -56,7 +56,12 @@ function HistoryCard({ session: s, onClick, onDelete }: { session: RankingSessio
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white truncate leading-tight">{s.name}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {isHidden && (
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(255,107,107,0.15)', color: '#ff6b6b' }}>
+                Hidden
+              </span>
+            )}
             <span
               className="text-xs font-semibold px-1.5 py-0.5 rounded-md"
               style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-faint)' }}
@@ -76,16 +81,22 @@ function HistoryCard({ session: s, onClick, onDelete }: { session: RankingSessio
         </svg>
       </button>
 
-      {/* Delete button */}
+      {/* Delete / restore button */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="relative flex-shrink-0 w-8 h-8 mr-2 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 hover:bg-red-500/15 active:bg-red-500/25"
-        aria-label="Remove from history"
-        style={{ color: '#ff6b6b' }}
+        className={`relative flex-shrink-0 w-8 h-8 mr-2 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 ${isHidden ? 'hover:bg-green-500/15 active:bg-green-500/25' : 'hover:bg-red-500/15 active:bg-red-500/25'}`}
+        aria-label={isHidden ? 'Restore to history' : 'Remove from history'}
+        style={{ color: isHidden ? 'var(--spotify-green)' : '#ff6b6b' }}
       >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-        </svg>
+        {isHidden ? (
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7v3l4-4-4-4v3z" />
+          </svg>
+        ) : (
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          </svg>
+        )}
       </button>
     </div>
   );
@@ -101,6 +112,7 @@ export default function HomePage() {
   const [completedSessions, setCompletedSessions] = useState<RankingSession[]>([]);
   const [hiddenSessions, setHiddenSessions] = useState<RankingSession[]>([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const [working, setWorking] = useState(false);
 
   function loadHistory() {
@@ -207,11 +219,11 @@ export default function HomePage() {
               }}
             >
               {[
-                { tier: 'S', color: '#FF4444', label: 'Absolute classics' },
-                { tier: 'A', color: '#FF9944', label: 'Really strong cuts' },
-                { tier: 'B', color: '#FFDD44', label: 'Solid tracks' },
-                { tier: 'C', color: '#44DD44', label: 'Decent listens' },
-                { tier: 'F', color: '#4488FF', label: 'Skip' },
+                { tier: 'S', color: '#FF7070', label: 'Absolute classics' },
+                { tier: 'A', color: '#FFA566', label: 'Really strong cuts' },
+                { tier: 'B', color: '#FFD966', label: 'Solid tracks' },
+                { tier: 'C', color: '#FFFE66', label: 'Decent listens' },
+                { tier: 'F', color: '#6BFF6B', label: 'Not for me' },
               ].map(({ tier, color, label }) => (
                 <div key={tier} className="flex items-center gap-3">
                   <div
@@ -284,42 +296,78 @@ export default function HomePage() {
             {/* History */}
             {(completedSessions.length > 0 || hiddenSessions.length > 0) && (
               <div className="space-y-3 pt-4">
-                {/* Divider */}
+                {/* Divider with optional "show hidden" toggle */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
-                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                  <span className="text-xs font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-faint)' }}>
                     Your Rankings
                   </span>
                   <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }} />
+                  {hiddenSessions.length > 0 && (
+                    <button
+                      onClick={() => setShowAllHistory((v) => !v)}
+                      aria-pressed={showAllHistory}
+                      className="flex items-center gap-1.5 flex-shrink-0 ml-1"
+                      title={showAllHistory ? 'Hide hidden rankings' : 'Show hidden rankings'}
+                    >
+                      <span className="text-xs font-medium" style={{ color: showAllHistory ? 'var(--spotify-green)' : 'var(--text-faint)' }}>
+                        All
+                      </span>
+                      <div
+                        className="relative rounded-full transition-colors duration-200 flex-shrink-0"
+                        style={{
+                          width: 28, height: 16,
+                          backgroundColor: showAllHistory ? 'var(--spotify-green)' : 'var(--surface-3)',
+                        }}
+                      >
+                        <div
+                          className="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all duration-200"
+                          style={{ left: showAllHistory ? 12 : 2 }}
+                        />
+                      </div>
+                    </button>
+                  )}
                 </div>
 
-                {completedSessions.length > 0 && (
+                {(completedSessions.length > 0 || (showAllHistory && hiddenSessions.length > 0)) && (
                   <>
                     {/* Search */}
-                    <div className="relative">
-                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
-                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                      </svg>
-                      <input
-                        type="text"
-                        placeholder={`Search ${completedSessions.length} ranking${completedSessions.length !== 1 ? 's' : ''}…`}
-                        value={historySearch}
-                        onChange={(e) => setHistorySearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
-                        style={{
-                          backgroundColor: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          color: 'var(--text-primary)',
-                        }}
-                      />
-                    </div>
+                    {(() => {
+                      const totalVisible = showAllHistory
+                        ? completedSessions.length + hiddenSessions.length
+                        : completedSessions.length;
+                      return (
+                        <div className="relative">
+                          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--text-faint)' }}>
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder={`Search ${totalVisible} ranking${totalVisible !== 1 ? 's' : ''}…`}
+                            value={historySearch}
+                            onChange={(e) => setHistorySearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-primary)',
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
 
                     {/* Cards */}
                     {(() => {
+                      const allVisible = showAllHistory
+                        ? [...completedSessions, ...hiddenSessions].sort(
+                            (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                          )
+                        : completedSessions;
                       const q = historySearch.trim().toLowerCase();
                       const filtered = q
-                        ? completedSessions.filter((s) => s.name.toLowerCase().includes(q))
-                        : completedSessions;
+                        ? allVisible.filter((s) => s.name.toLowerCase().includes(q))
+                        : allVisible;
                       if (filtered.length === 0) {
                         return (
                           <p className="text-sm text-center py-6" style={{ color: 'var(--text-faint)' }}>
@@ -333,15 +381,32 @@ export default function HomePage() {
                             <HistoryCard
                               key={s.id}
                               session={s}
+                              isHidden={s.hidden}
                               onClick={() => router.push(`/results/${s.id}`)}
                               onDelete={async () => {
-                                await fetch('/api/session', {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ id: s.id, hidden: true }),
-                                });
-                                setCompletedSessions((prev) => prev.filter((x) => x.id !== s.id));
-                                setHiddenSessions((prev) => [...prev, s]);
+                                if (s.hidden) {
+                                  // Restore
+                                  await fetch('/api/session', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: s.id, hidden: false }),
+                                  });
+                                  setHiddenSessions((prev) => prev.filter((x) => x.id !== s.id));
+                                  setCompletedSessions((prev) =>
+                                    [...prev, { ...s, hidden: false }].sort(
+                                      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                                    )
+                                  );
+                                } else {
+                                  // Hide
+                                  await fetch('/api/session', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: s.id, hidden: true }),
+                                  });
+                                  setCompletedSessions((prev) => prev.filter((x) => x.id !== s.id));
+                                  setHiddenSessions((prev) => [...prev, { ...s, hidden: true }]);
+                                }
                               }}
                             />
                           ))}
@@ -351,8 +416,8 @@ export default function HomePage() {
                   </>
                 )}
 
-                {/* Restore hidden */}
-                {hiddenSessions.length > 0 && (
+                {/* Restore all hidden — shown when not in show-all mode */}
+                {!showAllHistory && hiddenSessions.length > 0 && (
                   <button
                     onClick={async () => {
                       await fetch('/api/session', {

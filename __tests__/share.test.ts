@@ -4,7 +4,7 @@ import type { RankingSession, SongRanking } from '@/types';
 const session: RankingSession = {
   id: 'session-1', user_id: 'u1', spotify_type: 'album', spotify_id: 'a1',
   name: 'Blonde', cover_url: 'https://x.com/c.jpg', total_tracks: 4,
-  current_index: 4, completed: true, created_at: '2026-01-01', updated_at: '2026-01-01',
+  current_index: 4, completed: true, hidden: false, created_at: '2026-01-01', updated_at: '2026-01-01',
 };
 
 const rankings: SongRanking[] = [
