@@ -8,10 +8,10 @@ interface SharePanelProps {
   session: RankingSession;
   rankings: SongRanking[];
   subtitle: string;
-  tierListRef: RefObject<HTMLDivElement | null>;
+  captureRef: RefObject<HTMLDivElement | null>;
 }
 
-export function SharePanel({ session, rankings, subtitle, tierListRef }: SharePanelProps) {
+export function SharePanel({ session, rankings, subtitle, captureRef }: SharePanelProps) {
   async function handleCopyText() {
     const text = formatTierText(session, rankings, subtitle);
     await navigator.clipboard.writeText(text);
@@ -19,8 +19,13 @@ export function SharePanel({ session, rankings, subtitle, tierListRef }: SharePa
   }
 
   async function handleDownloadImage() {
-    if (!tierListRef.current) return;
-    await exportTierListImage(tierListRef.current);
+    if (!captureRef.current) return;
+    try {
+      await exportTierListImage(captureRef.current);
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      alert('Could not generate image. Try copying the text instead.');
+    }
   }
 
   return (

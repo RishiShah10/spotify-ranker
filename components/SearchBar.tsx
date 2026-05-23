@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { parseSpotifyUrl } from '@/lib/spotifyLink';
-import type { SpotifySearchResult } from '@/types';
+import type { SpotifySearchResponse } from '@/types';
 
 interface SearchBarProps {
-  onResults: (results: SpotifySearchResult[]) => void;
-  onDirectLink: (type: 'album' | 'playlist', id: string) => void;
+  onResults: (response: SpotifySearchResponse) => void;
+  onDirectLink: (type: 'album' | 'playlist', id: string) => Promise<void> | void;
 }
 
 export function SearchBar({ onResults, onDirectLink }: SearchBarProps) {
@@ -16,14 +16,22 @@ export function SearchBar({ onResults, onDirectLink }: SearchBarProps) {
   async function handleSearch() {
     const parsed = parseSpotifyUrl(query);
     if (parsed) {
-      onDirectLink(parsed.type, parsed.id);
+      setLoading(true);
+      try {
+        await onDirectLink(parsed.type, parsed.id);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     if (!query.trim()) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+      if (!res.ok) { onResults({ results: [], artists: [] }); return; }
       onResults(await res.json());
+    } catch {
+      onResults({ results: [], artists: [] });
     } finally {
       setLoading(false);
     }

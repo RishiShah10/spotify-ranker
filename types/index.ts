@@ -1,9 +1,9 @@
-export type Tier = 'S' | 'A' | 'B' | 'C' | 'F';
+export type Tier = 'S' | 'A' | 'B' | 'C' | 'F' | 'skip';
 
 export interface User {
   id: string;
   display_name: string;
-  email: string;
+  email: string | null;
   avatar_url: string | null;
   created_at: string;
 }
@@ -48,4 +48,17 @@ export interface SpotifySearchResult {
   coverUrl: string;
   subtitle: string;
   totalTracks: number;
+}
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  imageUrl: string;
+  followers: number;
+  genres: string[];
+}
+
+export interface SpotifySearchResponse {
+  results: SpotifySearchResult[];
+  artists: SpotifyArtist[];
 }

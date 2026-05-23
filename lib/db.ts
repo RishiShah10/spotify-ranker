@@ -1,12 +1,15 @@
 import { neon } from '@neondatabase/serverless';
 import type { RankingSession, SongRanking, Tier, User } from '@/types';
 
-export const sql = neon(process.env.DATABASE_URL!);
+if (!process.env.DATABASE_URL) {
+  throw new Error('Missing required env var: DATABASE_URL');
+}
+export const sql = neon(process.env.DATABASE_URL);
 
 export async function upsertUser(user: Omit<User, 'created_at'>): Promise<void> {
   await sql`
     INSERT INTO users (id, display_name, email, avatar_url)
-    VALUES (${user.id}, ${user.display_name}, ${user.email ?? ''}, ${user.avatar_url})
+    VALUES (${user.id}, ${user.display_name}, ${user.email || null}, ${user.avatar_url})
     ON CONFLICT (id) DO UPDATE SET
       display_name = EXCLUDED.display_name,
       email        = EXCLUDED.email,
@@ -67,7 +70,19 @@ export async function saveRanking(data: {
   await sql`
     INSERT INTO song_rankings (session_id, user_id, track_id, track_name, artist_name, tier)
     VALUES (${data.sessionId}, ${data.userId}, ${data.trackId}, ${data.trackName}, ${data.artistName}, ${data.tier})
+    ON CONFLICT (session_id, track_id) DO UPDATE SET
+      tier      = EXCLUDED.tier,
+      ranked_at = NOW()
   `;
+}
+
+export async function deleteSession(sessionId: string, userId: string): Promise<boolean> {
+  const result = await sql`
+    DELETE FROM ranking_sessions
+    WHERE id = ${sessionId} AND user_id = ${userId}
+    RETURNING id
+  `;
+  return result.length > 0;
 }
 
 export async function getRankingsForSession(sessionId: string): Promise<SongRanking[]> {
@@ -75,4 +90,16 @@ export async function getRankingsForSession(sessionId: string): Promise<SongRank
     SELECT * FROM song_rankings WHERE session_id = ${sessionId} ORDER BY ranked_at ASC
   `;
   return rows as SongRanking[];
+}
+
+export async function saveRankingAndProgress(
+  data: { sessionId: string; userId: string; trackId: string; trackName: string; artistName: string; tier: Tier },
+  progress: { currentIndex: number; completed: boolean }
+): Promise<void> {
+  await sql.transaction([
+    sql`INSERT INTO song_rankings (session_id, user_id, track_id, track_name, artist_name, tier)
+        VALUES (${data.sessionId}, ${data.userId}, ${data.trackId}, ${data.trackName}, ${data.artistName}, ${data.tier})
+        ON CONFLICT (session_id, track_id) DO UPDATE SET tier = EXCLUDED.tier, ranked_at = NOW()`,
+    sql`UPDATE ranking_sessions SET current_index = ${progress.currentIndex}, completed = ${progress.completed}, updated_at = NOW() WHERE id = ${data.sessionId}`,
+  ]);
 }

@@ -25,17 +25,22 @@ async function refreshAccessToken(token: any) {
         refresh_token: token.refreshToken,
       }),
     });
+    if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`);
     const data = await res.json();
     return {
       ...token,
       accessToken: data.access_token,
       accessTokenExpires: Date.now() + data.expires_in * 1000,
-      // Spotify only returns a new refresh token on certain grant flows; keep the old one if not provided
       refreshToken: data.refresh_token ?? token.refreshToken,
     };
-  } catch {
+  } catch (err) {
+    console.error('Spotify token refresh failed:', err);
     return { ...token, error: 'RefreshAccessTokenError' };
   }
+}
+
+if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
+  throw new Error('Missing required env vars: SPOTIFY_CLIENT_ID and/or SPOTIFY_CLIENT_SECRET');
 }
 
 export const authOptions: AuthOptions = {
@@ -51,12 +56,20 @@ export const authOptions: AuthOptions = {
       // First sign-in: persist user to DB and store tokens
       if (account && profile) {
         const p = profile as any;
-        await upsertUser({
-          id: p.id,
-          display_name: p.display_name ?? p.id,
-          email: p.email ?? '',
-          avatar_url: p.images?.[0]?.url ?? null,
-        });
+        if (!p?.id) {
+          console.error('Spotify profile missing id, skipping upsert');
+          return token;
+        }
+        try {
+          await upsertUser({
+            id: p.id,
+            display_name: p.display_name ?? p.id,
+            email: p.email ?? null,
+            avatar_url: p.images?.[0]?.url ?? null,
+          });
+        } catch (err) {
+          console.error('Failed to upsert user:', err);
+        }
         return {
           ...token,
           accessToken: account.access_token,

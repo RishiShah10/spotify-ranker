@@ -44,6 +44,32 @@ async function migrate() {
     )
   `;
 
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_ranking_sessions_user_id
+      ON ranking_sessions(user_id)
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_song_rankings_session_id
+      ON song_rankings(session_id)
+  `;
+
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_song_rankings_unique_session_track
+      ON song_rankings(session_id, track_id)
+  `;
+
+  // Allow 'skip' as a valid tier value (added when skip-track feature was introduced)
+  await sql`
+    ALTER TABLE song_rankings
+      DROP CONSTRAINT IF EXISTS song_rankings_tier_check
+  `;
+  await sql`
+    ALTER TABLE song_rankings
+      ADD CONSTRAINT song_rankings_tier_check
+      CHECK (tier IN ('S','A','B','C','F','skip'))
+  `;
+
   console.log('Migration complete.');
 }
 

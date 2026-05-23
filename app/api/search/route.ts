@@ -11,6 +11,16 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get('q');
   if (!q) return NextResponse.json({ error: 'Missing query' }, { status: 400 });
 
-  const results = await searchSpotify(q, session.accessToken);
-  return NextResponse.json(results);
+  // M6 — silently cap oversized queries rather than erroring (avoids leaking limit details)
+  if (q.length > 200) {
+    return NextResponse.json({ results: [], artists: [] });
+  }
+
+  try {
+    const response = await searchSpotify(q, session.accessToken);
+    return NextResponse.json(response);
+  } catch (err) {
+    console.error('Search failed:', err);
+    return NextResponse.json({ results: [], artists: [] });
+  }
 }
