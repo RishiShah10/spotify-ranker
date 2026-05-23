@@ -33,7 +33,11 @@ export function RankingPlayer({ session, tracks, accessToken, onRank, onExit }: 
   const currentTrack = tracks[trackIndex];
 
   const { playerState, playTrack, pause, togglePlay, activateElement, seek } = useSpotifyPlayer(accessToken, () => {
-    setShowPicker(true);
+    if (autoplay) {
+      handleSkip();
+    } else {
+      setShowPicker(true);
+    }
   });
 
   useEffect(() => {
