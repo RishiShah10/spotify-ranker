@@ -20,6 +20,9 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
   const onTrackEndRef = useRef(onTrackEnd);
   onTrackEndRef.current = onTrackEnd;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seekingRef = useRef(false);
+  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekSafetyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [playerState, setPlayerState] = useState<PlayerState>({
     isReady: false,
@@ -90,7 +93,14 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
         const position = state.position;
         const duration = state.track_window.current_track?.duration_ms ?? 0;
 
-        if (paused && position === 0 && !trackEndedRef.current && hasBeenPlayingRef.current) {
+        // Seek completed once playback resumes — safe to stop suppressing
+        if (seekingRef.current && !paused) {
+          seekingRef.current = false;
+          if (seekSafetyRef.current) { clearTimeout(seekSafetyRef.current); seekSafetyRef.current = null; }
+        }
+
+        // Only trigger track-end when not mid-seek — prevents false trigger when seeking to ~0
+        if (!seekingRef.current && paused && position === 0 && !trackEndedRef.current && hasBeenPlayingRef.current) {
           trackEndedRef.current = true;
           stopTick();
           onTrackEndRef.current();
@@ -107,7 +117,8 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
           ...s,
           isPaused: paused,
           currentTrackId: state.track_window.current_track?.id ?? null,
-          position,
+          // While seeking, keep our optimistic position — SDK events during a seek carry stale data
+          position: seekingRef.current ? s.position : position,
           duration,
         }));
       });
@@ -154,6 +165,8 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
 
     return () => {
       stopTick();
+      if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+      if (seekSafetyRef.current) clearTimeout(seekSafetyRef.current);
       playerRef.current?.disconnect();
       playerRef.current = null;
     };
@@ -206,20 +219,24 @@ export function useSpotifyPlayer(accessToken: string | null, onTrackEnd: () => v
   }
 
   async function seek(positionMs: number) {
-    if (!accessToken || !deviceIdRef.current) return;
+    if (!playerRef.current) return;
+    // Suppress false track-end detection during seek
+    seekingRef.current = true;
+    // Safety: clear flag after 2s in case Spotify never fires a resume event (e.g. seek while paused)
+    if (seekSafetyRef.current) clearTimeout(seekSafetyRef.current);
+    seekSafetyRef.current = setTimeout(() => { seekingRef.current = false; }, 2000);
+    // Optimistic UI update — show new position immediately
     setPlayerState((s) => ({ ...s, position: positionMs }));
-    try {
-      const r = await fetch(
-        `https://api.spotify.com/v1/me/player/seek?position_ms=${Math.round(positionMs)}&device_id=${deviceIdRef.current}`,
-        {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      if (!r.ok) console.warn('Seek failed:', r.status);
-    } catch (err) {
-      console.warn('Seek error:', err);
-    }
+    // Debounce the actual SDK call so rapid scrubbing sends only one request
+    if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+    seekDebounceRef.current = setTimeout(async () => {
+      try {
+        await playerRef.current?.seek(positionMs);
+      } catch (err) {
+        console.warn('Seek error:', err);
+        seekingRef.current = false;
+      }
+    }, 80);
   }
 
   return { playerState, playTrack, pause, togglePlay, activateElement, seek };
